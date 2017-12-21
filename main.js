@@ -58,7 +58,10 @@ d3.csv("airline-safety.csv", function(error, data) {
 			return colorScale(d.fatalities_85_99);
 		})
 		.attr("stroke", "white")
-		.attr("stroke-width", "1");
+		.attr("stroke-width", "1")
+		.on("mouseover", mouseOver)
+		.on("mousemove", mouseMove)
+		.on("mouseout", mouseOut);
 
 		// Axis
 		var xAxis = d3.axisBottom().scale(xScale);
@@ -90,47 +93,77 @@ d3.csv("airline-safety.csv", function(error, data) {
 			.attr("font-size", "10")
 			.text("Fatal Accidents");
 
+	// function mouseOver and mouseOut
+	function mouseOver() {
+		console.log("MouseOver" + ", this= " + this);
+		//console.log("this= ", this );	
+		//debugger;
+		svg.append("g")
+			.attr("class", "cLabel")
+			.append("text")
+			.attr("x", (this.cx.baseVal.value + 5) )
+			.attr("y", this.cy.baseVal.value)
+			.text(this.__data__.incidents_85_99 + " , " + this.__data__.fatal_accidents_85_99 + " , " + this.__data__.airline );
+	}
+
+	function mouseMove() {
+		console.log("mouseMove" + " , this= " + this);
+	}
+
+	function mouseOut() {
+		console.log("MouseOut" + ", this= " + this);
+		d3.selectAll(".cLabel").remove();
+	}
+
+
+	var idleTimeout, 
+			idleDelay=350;
+
 	// function brushend
 	// Need to be inside the csv call, for preserving the scope of xExtent and yExtent
 	function brushend() {
 		if(!d3.event.sourceEvent) return;
 		eventt = d3.event.sourceEvent;
-		console.log ("eventt= " + eventt);
+		//console.log ("eventt= " + eventt);
 		//debugger;
 		s = d3.event.selection;
 		if (!s) {
-			console.log ("No Selection");
-			console.log("xExtent= " + xExtent);
+			if (!idleTimeout) return idleTimeout = setTimeout(idled, idleDelay);
+			//console.log ("No Selection");
+			//console.log("xExtent= " + xExtent);
 			
 			// Going back to original domain when nothing is selected
 			xScale.domain(xExtent);
 			yScale.domain(yExtent);
 		} else {
-			console.log("s= " + s +", s[0]= " + s[0] + ", s[1]= " + s[1] + " , this= " + this);
+			//console.log("s= " + s +", s[0]= " + s[0] + ", s[1]= " + s[1] + " , this= " + this);
 			var x0 = xScale.invert(s[0][0]);
 			var y0 = yScale.invert(s[0][1]);
 		
 			var x1 = xScale.invert(s[1][0]);
 			var y1 = yScale.invert(s[1][1]);
 		
-			console.log("x0= " + x0 + ", x1= " + x1 + ", y0= " + y0 + ", y1= " + y1);
+			//console.log("x0= " + x0 + ", x1= " + x1 + ", y0= " + y0 + ", y1= " + y1);
 		
 			// New domain after brushing to zoom in to these points
 			xScale.domain([x0, x1]);
 			yScale.domain([y1, y0]);
+			svg.select(".brush").call(brush.move, null);
 		}
 
 		// Zoom to the new domain
 		zoom();
 		//debugger;
 
-		// ** Cant get the brush to deselect, gives d3 call stack size exceeded, 
 		// check https://github.com/d3/d3-brush/issues/10 
 		// and https://github.com/d3/d3-brush/issues/9
 		// example https://bl.ocks.org/mbostock/f48fcdb929a620ed97877e4678ab15e6
 		// brush events https://bl.ocks.org/mbostock/15a9eecf0b29db92f12ca823cfbbce0a
 
-		//svg.select(".brush").call(brush.move, null);
+	}
+
+	function idled() {
+		idleTimeout = null;
 	}
 
 	function zoom() {
@@ -140,10 +173,24 @@ d3.csv("airline-safety.csv", function(error, data) {
 
 		svg.selectAll("circle").transition(t)
 			.attr("cx", function(d) {
-				return xScale(d.incidents_85_99);
+				if (xScale(d.incidents_85_99) >= padding.left && yScale(d.fatal_accidents_85_99) <= svgHeight-padding.bottom) {
+					//console.log("cx= " + xScale(d.incidents_85_99));
+					return xScale(d.incidents_85_99);
+				}
 			})
 			.attr("cy", function(d) {
-				return yScale(d.fatal_accidents_85_99);
+				if (xScale(d.incidents_85_99) >= padding.left && yScale(d.fatal_accidents_85_99) <= svgHeight-padding.bottom) {
+					//console.log("cy= " + yScale(d.fatal_accidents_85_99) );
+					return yScale(d.fatal_accidents_85_99);
+				}
+			})
+			.attr("r", function(d) {
+				if ((xScale(d.incidents_85_99) >= padding.left && yScale(d.fatal_accidents_85_99) <= svgHeight-padding.bottom) ) {
+					return rScale(d.fatalities_85_99);
+				} else {
+					return 0;
+				}
+				
 			});
 		//debugger;
 		//svg.select(".brush").call(brush.move, null);
