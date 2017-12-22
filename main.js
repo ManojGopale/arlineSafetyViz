@@ -1,4 +1,8 @@
 // svg parameters
+//-- To do , axis are of different length's, create a button to zoom in
+//-- color coding for table's incdents and fatatl_incidents
+//-- pop up the circle when hovering over the table
+//-- brushing is zooming in , so that should be enough for this plot
 
 var svgHeight = 200;
 var svgWidth = 500;
@@ -8,11 +12,49 @@ var dataD = [];
 padding = {"bottom" : 40, "top" : 10, "right": 10, "left" :40};
 paddingAxis = {"bottom": 15, "left": 15};
 
+// https://github.com/wbkd/d3-extended
+d3.selection.prototype.moveToFront = function() {  
+	return this.each(function(){
+	this.parentNode.appendChild(this);
+	});
+};
+
+d3.selection.prototype.moveToBack = function() {  
+	return this.each(function() { 
+	var firstChild = this.parentNode.firstChild; 
+	if (firstChild) { 
+			this.parentNode.insertBefore(this, firstChild); 
+		} 
+	});
+};
+
+// Creating the table
+var table = d3.select("#tableDiv").append("table").attr("id", "safetyTable");
+var thead = table.append("thead");
+var tbody = table.append("tbody");
+
+// clickCount for rotating over colors in selection
+var clickCount = 0;
+var numColor = 8;
+var clickColorScale = d3.scaleQuantize().domain([0,numColor]).range(['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99']);
+
 d3.csv("airline-safety.csv", function(error, data) { 
 	if(error) throw error;
 
 	console.log("d=" + data);
 	dataD = data;
+
+	// Array for header of the table
+	header = Object.keys(data[0]);
+
+	//Creating the header of the table
+	thead.append("tr").selectAll("th")
+		.data(header)
+		.enter()
+		.append("th")
+		.text(function(d){
+			return d;
+		});
 
 
 	//svgPlotIFF -> svgPlot Incidents, Fatal accidents, Fatalities
@@ -43,6 +85,12 @@ d3.csv("airline-safety.csv", function(error, data) {
 		.enter()
 		.append("g")
 		.append("circle")
+		.attr("class", function(d,i) {
+			var classStr = "circle_" + i;
+			return classStr;
+		})
+		// circle1 class is used to reset the colors in brusend1 on no selection
+		.classed("circle1", true)
 		.attr("cx", function(d) {
 			return xScale(d.incidents_85_99);
 		})
@@ -57,6 +105,7 @@ d3.csv("airline-safety.csv", function(error, data) {
 		})
 		.attr("stroke", "white")
 		.attr("stroke-width", "1")
+		.on("click", mouseClick)
 		.on("mouseover", mouseOver)
 		.on("mousemove", mouseMove)
 		.on("mouseout", mouseOut);
@@ -91,8 +140,57 @@ d3.csv("airline-safety.csv", function(error, data) {
 			.attr("font-size", "10")
 			.text("Fatal Accidents");
 
+	// mouseclick
+	function mouseClick(d, i) {
+		// Create table for selected circle
+		console.log("table d=" + d + ", header= " + header);
+		// cant use 'd' directly in data, so clickData is created
+		var clickData = d;
+		//debugger;
+		var cells = tbody.append("tr").attr("class", "rowSeen")
+			// border color of table same as the selected color on clicking
+			.style("border", function() {
+				return ("10px solid " + clickColorScale(clickCount));
+			})
+			//.style("border-top-width", "10px")
+			.selectAll("td")
+			.data(function(clickData) {
+				// header.map ==> creates a map for all the keys such that each key is the column, and the value
+				// for each key is stored in the value. Creates a data element with 4 objects.
+				return header.map(function(column) {
+					return {column: column, value: d[column]};
+				})
+			})
+			.enter()
+			.append("td")
+			// here the 'd' is the data that we created from each row in the data element.
+			.text(function(d) {
+				return d.value;
+			})
+			.style("background-color", function(d) {
+				if (d.column=="fatalities_85_99" || d.column=="fatalities_00_14") {
+					return colorScale(d.value);
+				} else { 
+					return "white";
+				}
+			});
+
+		// Once you click the color will remain as blue
+		var selClass = ".circle_" + i;
+		// ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99']
+		d3.selectAll(selClass).attr("fill", function() {
+			return clickColorScale(clickCount);
+		});
+		if (clickCount < numColor ){
+			clickCount = clickCount + 1;
+		} else if (clickCount >= numColor ) {
+			clickCount = 0;
+		}
+	}
+
+
 	// function mouseOver and mouseOut
-	function mouseOver() {
+	function mouseOver(d, i) {
 		console.log("MouseOver" + ", this= " + this);
 		//console.log("this= ", this );	
 		//debugger;
@@ -102,6 +200,12 @@ d3.csv("airline-safety.csv", function(error, data) {
 			.attr("x", (this.cx.baseVal.value + 5) )
 			.attr("y", this.cy.baseVal.value)
 			.text(Math.round(xScale.invert(this.cx.baseVal.value)) + " , " + Math.round(yScale.invert(this.cy.baseVal.value)) + " , " + this.__data__.fatalities_85_99 + ", " + this.__data__.airline );
+
+		// Highlighting the selected circle
+		var classSel = "."+ this.className.baseVal;
+		d3.selectAll(classSel).classed("highlight", true);
+		d3.selectAll(classSel).moveToFront(); // Not working yet
+
 	}
 
 	function mouseMove() {
@@ -111,6 +215,7 @@ d3.csv("airline-safety.csv", function(error, data) {
 	function mouseOut() {
 		console.log("MouseOut" + ", this= " + this);
 		d3.selectAll(".cLabel").remove();
+		d3.selectAll(".highlight").classed("highlight", false);
 	}
 
 
@@ -237,6 +342,12 @@ d3.csv("airline-safety.csv", function(error, data) {
 		.enter()
 		.append("g")
 		.append("circle")
+		.attr("class", function(d,i) {
+			var classStr = "circle_"+ i;
+			return classStr;
+		})
+		// circle2 class is used to reset the colors on no selection in brushend1
+		.classed("circle2", true)
 		.attr("cx", function(d) {
 			return xScale(d.incidents_00_14);
 		})
@@ -251,6 +362,7 @@ d3.csv("airline-safety.csv", function(error, data) {
 		})
 		.attr("stroke", "white")
 		.attr("stroke-width", "1")
+		.on("click", mouseClick)
 		.on("mouseover", mouseOver)
 		.on("mousemove", mouseMove)
 		.on("mouseout", mouseOut);
@@ -285,6 +397,53 @@ d3.csv("airline-safety.csv", function(error, data) {
 			.attr("font-size", "10")
 			.text("Fatal Accidents");
 
+	// mouseClick
+	function mouseClick (d, i) {
+		// Create table for selected circle
+		console.log("table d=" + d + ", header= " + header);
+		// cant use 'd' directly in data, so clickData is created
+		var clickData = d;
+		//debugger;
+		var cells = tbody.append("tr").attr("class", "rowSeen")
+			// border color of table same as the selected color on clicking
+			.style("border", function() {
+				return ("10px solid " + clickColorScale(clickCount));
+			})
+			//.style("border-top-width", "10px")
+			.selectAll("td")
+			.data(function(clickData) {
+				// header.map ==> creates a map for all the keys such that each key is the column, and the value
+				// for each key is stored in the value. Creates a data element with 4 objects.
+				return header.map(function(column) {
+					return {column: column, value: d[column]};
+				})
+			})
+			.enter()
+			.append("td")
+			// here the 'd' is the data that we created from each row in the data element.
+			.text(function(d) {
+				return d.value;
+			})
+			.style("background-color", function(d) {
+				if (d.column=="fatalities_00_14" || d.column=="fatalities_85_99") {
+					return colorScale(d.value);
+				} else { 
+					return "white";
+				}
+			});
+
+		// Once you click the color will remain as blue
+		var selClass = ".circle_" + i;
+		// ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99']
+		d3.selectAll(selClass).attr("fill", function() {
+			return clickColorScale(clickCount);
+		});
+		if (clickCount < numColor ){
+			clickCount = clickCount + 1;
+		} else if (clickCount >= numColor ) {
+			clickCount = 0;
+		}
+	}
 	// function mouseOver and mouseOut
 	function mouseOver() {
 		console.log("MouseOver" + ", this= " + this);
@@ -296,6 +455,11 @@ d3.csv("airline-safety.csv", function(error, data) {
 			.attr("x", (this.cx.baseVal.value + 5) )
 			.attr("y", this.cy.baseVal.value)
 			.text(Math.round(xScale.invert(this.cx.baseVal.value)) + " , " + Math.round(yScale.invert(this.cy.baseVal.value)) + " , " + this.__data__.fatalities_00_14 + ", " + this.__data__.airline );
+
+		// Highlighting the selected circle
+		var classSel = "."+ this.className.baseVal;
+		d3.selectAll(classSel).classed("highlight", true);
+		d3.selectAll(classSel).moveToFront(); // Not working yet
 	}
 
 	function mouseMove() {
@@ -305,6 +469,7 @@ d3.csv("airline-safety.csv", function(error, data) {
 	function mouseOut() {
 		console.log("MouseOut" + ", this= " + this);
 		d3.selectAll(".cLabel").remove();
+		d3.selectAll(".highlight").classed("highlight", false);
 	}
 
 
@@ -321,7 +486,7 @@ d3.csv("airline-safety.csv", function(error, data) {
 		s = d3.event.selection;
 		if (!s) {
 			if (!idleTimeout) return idleTimeout = setTimeout(idled, idleDelay);
-			//console.log ("No Selection");
+			console.log ("No Selection");
 			//console.log("xExtent= " + xExtent);
 			
 			// Going back to original domain when nothing is selected
@@ -391,3 +556,27 @@ d3.csv("airline-safety.csv", function(error, data) {
 	}
 
 });
+
+function reset() {
+	d3.csv("airline-safety.csv", function(error, data) { 
+		if(error) throw error;
+		var rExtent = d3.extent(data, function(d) {return parseInt(d.fatalities_85_99) } );
+		var colorScale = d3.scaleLinear().domain([rExtent[0], rExtent[1]]).range(['#fee5d9', '#a50f15']);
+
+		// Remove the color for all the selected circles
+		d3.selectAll(".circle2")
+			.attr("fill", function(d) {
+				// Since the data is bound to the circles we can reset them here
+				return colorScale(d.fatalities_00_14);
+			});
+		
+		// Reset the color 
+		d3.selectAll(".circle1")
+			.attr("fill", function(d) {
+				return colorScale(d.fatalities_85_99);
+			});
+
+		// Remove all the rows from the table
+		d3.selectAll(".rowSeen").remove();
+	});
+};
