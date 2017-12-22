@@ -62,7 +62,7 @@ d3.csv("airline-safety.csv", function(error, data) {
 		.on("mouseout", mouseOut);
 
 		// Axis
-		var xAxis = d3.axisBottom().scale(xScale);
+		var xAxis = d3.axisBottom().scale(xScale).ticks(5);
 		d3.select("#svgPlotIFF").append("g")
 			.attr("class", "xAxis")
 			.attr("transform", "translate ( 0 " + (svgHeight - padding.bottom) + " ) " )
@@ -76,7 +76,7 @@ d3.csv("airline-safety.csv", function(error, data) {
 			.attr("font-size", "10")
 			.text("Incidents_85_99")
 
-		var yAxis = d3.axisLeft().scale(yScale);
+		var yAxis = d3.axisLeft().scale(yScale).ticks(5);
 		d3.select("#svgPlotIFF").append("g")
 			.attr("class", "yAxis")
 			.attr("transform", "translate (" + padding.left + " 0)" )
@@ -101,7 +101,7 @@ d3.csv("airline-safety.csv", function(error, data) {
 			.append("text")
 			.attr("x", (this.cx.baseVal.value + 5) )
 			.attr("y", this.cy.baseVal.value)
-			.text(Math.round(xScale.invert(this.cx.baseVal.value)) + " , " + Math.round(yScale.invert(this.cy.baseVal.value)) + " , " + this.__data__.airline );
+			.text(Math.round(xScale.invert(this.cx.baseVal.value)) + " , " + Math.round(yScale.invert(this.cy.baseVal.value)) + " , " + this.__data__.fatalities_85_99 + ", " + this.__data__.airline );
 	}
 
 	function mouseMove() {
@@ -215,7 +215,8 @@ d3.csv("airline-safety.csv", function(error, data) {
 
 	var xExtent = d3.extent(data, function(d) { return parseInt(d.incidents_00_14) } );
 	var yExtent = d3.extent(data, function(d) { return parseInt(d.fatal_accidents_00_14) } );
-	var rExtent = d3.extent(data, function(d) {return parseInt(d.fatalities_00_14) } );
+	// Since the extent of 85_99 is the most, we are choosing that for radius and color for second plot too
+	var rExtent = d3.extent(data, function(d) {return parseInt(d.fatalities_85_99) } );
 	var extent = d3.extent(data, function(d) { return parseInt(d.incidents_00_14) } )
 	console.log("xExtent= " + xExtent + ", yExtent= " + yExtent);
 	console.log("Extent =" + extent);
@@ -255,7 +256,7 @@ d3.csv("airline-safety.csv", function(error, data) {
 		.on("mouseout", mouseOut);
 
 		// Axis
-		var xAxis = d3.axisBottom().scale(xScale);
+		var xAxis = d3.axisBottom().scale(xScale).ticks(5);
 		d3.select("#svgPlotIFF2").append("g")
 			.attr("class", "xAxis")
 			.attr("transform", "translate ( 0 " + (svgHeight - padding.bottom) + " ) " )
@@ -269,7 +270,7 @@ d3.csv("airline-safety.csv", function(error, data) {
 			.attr("font-size", "10")
 			.text("Incidents_00_14")
 
-		var yAxis = d3.axisLeft().scale(yScale);
+		var yAxis = d3.axisLeft().scale(yScale).ticks(5);
 		d3.select("#svgPlotIFF2").append("g")
 			.attr("class", "yAxis")
 			.attr("transform", "translate (" + padding.left + " 0)" )
@@ -294,7 +295,7 @@ d3.csv("airline-safety.csv", function(error, data) {
 			.append("text")
 			.attr("x", (this.cx.baseVal.value + 5) )
 			.attr("y", this.cy.baseVal.value)
-			.text(Math.round(xScale.invert(this.cx.baseVal.value)) + " , " + Math.round(yScale.invert(this.cy.baseVal.value)) + " , " + this.__data__.airline );
+			.text(Math.round(xScale.invert(this.cx.baseVal.value)) + " , " + Math.round(yScale.invert(this.cy.baseVal.value)) + " , " + this.__data__.fatalities_00_14 + ", " + this.__data__.airline );
 	}
 
 	function mouseMove() {
